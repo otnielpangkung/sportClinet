@@ -1,321 +1,237 @@
 <template>
-	<b-container fluid>
-		<!-- User Interface controls -->
-		<b-row>
-			<b-col lg="6" class="my-1">
-				<b-form-group
-					label="Sort"
-					label-for="sort-by-select"
-					label-cols-sm="3"
-					label-align-sm="right"
-					label-size="sm"
-					class="mb-0"
-					v-slot="{ ariaDescribedby }"
+	<div class="main m-2">
+		<div class="olahragas">
+			<div class="row">
+				<!-- <b-button @click.prevent="test()">Tes</b-button> -->
+			</div>
+			<div class="row">
+				<b-table striped hover :items="olahragas" :fields="fieldsOlahraga">
+					<template #cell(jumlah)="row">{{
+						formatUang(totalJumlah(row.item.Kegiatans))
+					}}</template>
+					<template #cell(target)="row">{{ formatUang(row.value) }}</template>
+					<template #cell(kurang)="row">{{
+						formatUang(kurang(totalJumlah(row.item.Kegiatans), row.item.target))
+					}}</template>
+					<template #cell(kegiatan)="row">{{
+						row.item.Kegiatans.length
+					}}</template>
+				</b-table>
+			</div>
+
+			<div class="row mb-2">
+				<div class="input-group col-sm">
+					<label class="my-1 mr-2" for="selectedMonth">Periode :</label>
+					<vue-monthly-picker v-model="selectedMonth"></vue-monthly-picker>
+				</div>
+			</div>
+			<div class="">
+				<table
+					class="table table-bordered border-primary table-striped"
+					id="relasiTable"
 				>
-					<b-input-group size="sm">
-						<b-form-select
-							id="sort-by-select"
-							v-model="sortBy"
-							:options="sortOptions"
-							:aria-describedby="ariaDescribedby"
-							class="w-75"
-						>
-							<template #first>
-								<option value="">-- none --</option>
-							</template>
-						</b-form-select>
-
-						<b-form-select
-							v-model="sortDesc"
-							:disabled="!sortBy"
-							:aria-describedby="ariaDescribedby"
-							size="sm"
-							class="w-25"
-						>
-							<option :value="false">Asc</option>
-							<option :value="true">Desc</option>
-						</b-form-select>
-					</b-input-group>
-				</b-form-group>
-			</b-col>
-
-			<b-col lg="6" class="my-1">
-				<b-form-group
-					label="Initial sort"
-					label-for="initial-sort-select"
-					label-cols-sm="3"
-					label-align-sm="right"
-					label-size="sm"
-					class="mb-0"
-				>
-					<b-form-select
-						id="initial-sort-select"
-						v-model="sortDirection"
-						:options="['asc', 'desc', 'last']"
-						size="sm"
-					></b-form-select>
-				</b-form-group>
-			</b-col>
-
-			<b-col lg="6" class="my-1">
-				<b-form-group
-					label="Filter"
-					label-for="filter-input"
-					label-cols-sm="3"
-					label-align-sm="right"
-					label-size="sm"
-					class="mb-0"
-				>
-					<b-input-group size="sm">
-						<b-form-input
-							id="filter-input"
-							v-model="filter"
-							type="search"
-							placeholder="Type to Search"
-						></b-form-input>
-
-						<b-input-group-append>
-							<b-button :disabled="!filter" @click="filter = ''"
-								>Clear</b-button
-							>
-						</b-input-group-append>
-					</b-input-group>
-				</b-form-group>
-			</b-col>
-
-			<b-col lg="6" class="my-1">
-				<b-form-group
-					v-model="sortDirection"
-					label="Filter On"
-					description="Leave all unchecked to filter on all data"
-					label-cols-sm="3"
-					label-align-sm="right"
-					label-size="sm"
-					class="mb-0"
-					v-slot="{ ariaDescribedby }"
-				>
-					<b-form-checkbox-group
-						v-model="filterOn"
-						:aria-describedby="ariaDescribedby"
-						class="mt-1"
-					>
-						<b-form-checkbox value="name">Name</b-form-checkbox>
-						<b-form-checkbox value="age">Age</b-form-checkbox>
-						<b-form-checkbox value="isActive">Active</b-form-checkbox>
-					</b-form-checkbox-group>
-				</b-form-group>
-			</b-col>
-
-			<b-col sm="5" md="6" class="my-1">
-				<b-form-group
-					label="Per page"
-					label-for="per-page-select"
-					label-cols-sm="6"
-					label-cols-md="4"
-					label-cols-lg="3"
-					label-align-sm="right"
-					label-size="sm"
-					class="mb-0"
-				>
-					<b-form-select
-						id="per-page-select"
-						v-model="perPage"
-						:options="pageOptions"
-						size="sm"
-					></b-form-select>
-				</b-form-group>
-			</b-col>
-
-			<b-col sm="7" md="6" class="my-1">
-				<b-pagination
-					v-model="currentPage"
-					:total-rows="totalRows"
-					:per-page="perPage"
-					align="fill"
-					size="sm"
-					class="my-0"
-				></b-pagination>
-			</b-col>
-		</b-row>
-
-		<!-- Main table element -->
-		<b-table
-			:items="items"
-			:fields="fields"
-			:current-page="currentPage"
-			:per-page="perPage"
-			:filter="filter"
-			:filter-included-fields="filterOn"
-			:sort-by.sync="sortBy"
-			:sort-desc.sync="sortDesc"
-			:sort-direction="sortDirection"
-			stacked="md"
-			show-empty
-			small
-			@filtered="onFiltered"
-		>
-			<template #cell(name)="row">
-				{{ row.value.first }} {{ row.value.last }}
-			</template>
-
-			<template #cell(actions)="row">
-				<b-button
-					size="sm"
-					@click="info(row.item, row.index, $event.target)"
-					class="mr-1"
-				>
-					Info modal
-				</b-button>
-				<b-button size="sm" @click="row.toggleDetails">
-					{{ row.detailsShowing ? 'Hide' : 'Show' }} Details
-				</b-button>
-			</template>
-
-			<template #row-details="row">
-				<b-card>
-					<ul>
-						<li v-for="(value, key) in row.item" :key="key">
-							{{ key }}: {{ value }}
-						</li>
-					</ul>
-				</b-card>
-			</template>
-		</b-table>
-
-		<!-- Info modal -->
-		<b-modal
-			:id="infoModal.id"
-			:title="infoModal.title"
-			ok-only
-			@hide="resetInfoModal"
-		>
-			<pre>{{ infoModal.content }}</pre>
-		</b-modal>
-	</b-container>
+					<thead class="table">
+						<th>Nama Olahraga</th>
+						<th></th>
+						<th>Total</th>
+						<th>1</th>
+						<th>2</th>
+						<th>3</th>
+						<th>4</th>
+						<th>5</th>
+						<th>6</th>
+						<th>7</th>
+						<th>8</th>
+						<th>9</th>
+						<th>10</th>
+						<th>11</th>
+						<th>12</th>
+						<th>13</th>
+						<th>14</th>
+						<th>15</th>
+						<th>16</th>
+						<th>17</th>
+						<th>18</th>
+						<th>19</th>
+						<th>20</th>
+						<th>21</th>
+						<th>22</th>
+						<th>23</th>
+						<th>24</th>
+						<th>25</th>
+						<th>26</th>
+						<th>27</th>
+						<th>28</th>
+						<th>29</th>
+						<th>30</th>
+						<th>31</th>
+					</thead>
+					<tbody>
+						<tr v-for="sport in this.olahragas" :key="sport.id">
+							<td>{{ sport.namaOlahraga }}</td>
+							<td></td>
+							<td>{{ getHarian(sport.Kegiatans, 0) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 1) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 2) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 3) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 4) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 5) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 6) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 7) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 8) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 9) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 10) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 11) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 12) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 13) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 14) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 15) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 16) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 17) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 18) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 19) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 20) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 21) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 22) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 23) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 24) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 25) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 26) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 27) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 28) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 29) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 30) }}</td>
+							<td>{{ getHarian(sport.Kegiatans, 31) }}</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
 </template>
 
 <script>
+	import axios from '../API/axios';
+	import Swal from 'sweetalert2';
+	import VueMonthlyPicker from 'vue-monthly-picker';
+	import moment from 'moment';
+
 	export default {
+		name: 'About',
+		components: {
+			VueMonthlyPicker,
+		},
 		data() {
 			return {
-				items: [
-					{
-						isActive: true,
-						age: 40,
-						name: { first: 'Dickerson', last: 'Macdonald' },
-					},
-					{ isActive: false, age: 21, name: { first: 'Larsen', last: 'Shaw' } },
-					{
-						isActive: false,
-						age: 9,
-						name: { first: 'Mini', last: 'Navarro' },
-						_rowVariant: 'success',
-					},
-					{
-						isActive: false,
-						age: 89,
-						name: { first: 'Geneva', last: 'Wilson' },
-					},
-					{ isActive: true, age: 38, name: { first: 'Jami', last: 'Carney' } },
-					{
-						isActive: false,
-						age: 27,
-						name: { first: 'Essie', last: 'Dunlap' },
-					},
-					{
-						isActive: true,
-						age: 40,
-						name: { first: 'Thor', last: 'Macdonald' },
-					},
-					{
-						isActive: true,
-						age: 87,
-						name: { first: 'Larsen', last: 'Shaw' },
-						_cellVariants: { age: 'danger', isActive: 'warning' },
-					},
-					{
-						isActive: false,
-						age: 26,
-						name: { first: 'Mitzi', last: 'Navarro' },
-					},
-					{
-						isActive: false,
-						age: 22,
-						name: { first: 'Genevieve', last: 'Wilson' },
-					},
-					{ isActive: true, age: 38, name: { first: 'John', last: 'Carney' } },
-					{ isActive: false, age: 29, name: { first: 'Dick', last: 'Dunlap' } },
+				namaOlahraga: '',
+				target: 0,
+				satuan: '',
+				olahragas: [],
+				endDate: '',
+				startDate: '',
+
+				selectedMonth: '',
+				fieldsOlahraga: [
+					{ key: 'namaOlahraga', label: 'NAMA OLAHRAGA' },
+					{ key: 'target', label: 'TARGET', class: 'text-right' },
+					{ key: 'satuan', label: 'Satuan' },
+					{ key: 'jumlah', class: 'text-right', label: 'JUMLAH' },
+					{ key: 'kurang', class: 'text-right', label: 'KURANG' },
+					{ key: 'kegiatan', label: 'KEGIATAN' },
 				],
-				fields: [
-					{
-						key: 'name',
-						label: 'Person full name',
-						sortable: true,
-						sortDirection: 'desc',
-					},
-					{
-						key: 'age',
-						label: 'Person age',
-						sortable: true,
-						class: 'text-center',
-					},
-					{
-						key: 'isActive',
-						label: 'Is Active',
-						formatter: (value, key, item) => {
-							return value ? 'Yes' : 'No';
-						},
-						sortable: true,
-						sortByFormatted: true,
-						filterByFormatted: true,
-					},
-					{ key: 'actions', label: 'Actions' },
-				],
-				totalRows: 1,
-				currentPage: 1,
-				perPage: 5,
-				pageOptions: [5, 10, 15, { value: 100, text: 'Show a lot' }],
-				sortBy: '',
-				sortDesc: false,
-				sortDirection: 'asc',
-				filter: null,
-				filterOn: [],
-				infoModal: {
-					id: 'info-modal',
-					title: '',
-					content: '',
-				},
 			};
 		},
-		computed: {
-			sortOptions() {
-				// Create an options list from our fields
-				return this.fields
-					.filter((f) => f.sortable)
-					.map((f) => {
-						return { text: f.label, value: f.key };
-					});
-			},
-		},
-		mounted() {
-			// Set the initial number of items
-			this.totalRows = this.items.length;
+		created() {
+			this.olahragaList();
 		},
 		methods: {
-			info(item, index, button) {
-				this.infoModal.title = `Row index: ${index}`;
-				this.infoModal.content = JSON.stringify(item, null, 2);
-				this.$root.$emit('bv::show::modal', this.infoModal.id, button);
+			olahragaList() {
+				return axios
+					.get('/olahraga')
+					.then(({ data }) => {
+						this.olahragas = data;
+					})
+					.catch((err) => {
+						console.log(err);
+					});
 			},
-			resetInfoModal() {
-				this.infoModal.title = '';
-				this.infoModal.content = '';
+			addOlahraga() {
+				let payload = {
+					namaOlahraga: this.namaOlahraga,
+					satuan: this.satuan,
+					target: +this.target,
+				};
+				return axios({
+					method: 'post',
+					data: payload,
+					url: '/olahraga',
+				});
 			},
-			onFiltered(filteredItems) {
-				// Trigger pagination to update the number of buttons/pages due to filtering
-				this.totalRows = filteredItems.length;
-				this.currentPage = 1;
+
+			getHarian(data, tanggal) {
+				let hasil = 0;
+				if (tanggal !== 0) {
+					data?.map((item) => {
+						const bulan = moment(item.tanggal).format('MM-YYYY');
+						const periode = moment(this.selectedMonth).format('MM-YYYY');
+						const tanggalItem = moment(item.tanggal).format('DD');
+						if (bulan == periode && tanggal == tanggalItem) {
+							hasil += item.jumlah;
+						}
+						console.log(
+							bulan,
+							'bulan',
+							periode,
+							'periode',
+							tanggalItem,
+							'================='
+						);
+					});
+				} else {
+					data?.map((item) => {
+						const bulan = moment(item.tanggal).format('MM-YYYY');
+						const periode = moment(this.selectedMonth).format('MM-YYYY');
+
+						if (bulan == periode) {
+							hasil += item.jumlah;
+						}
+					});
+					return hasil;
+				}
+			},
+			formatTanggal(data) {
+				let hasil = '';
+				var time = moment(data).format('DD-MM-YYYY h:mm:ss');
+				hasil = time.slice(0, 10);
+				return hasil;
+			},
+			totalJumlah(data) {
+				let hasil = 0;
+				data?.map((el) => {
+					hasil += el.jumlah;
+				});
+				return hasil;
+			},
+			kurang(real, target) {
+				let hasil = 0;
+				hasil = target - real;
+				return hasil;
+			},
+			formatUang(data) {
+				// console.log(data, "dataa");
+				let uang = '';
+				data = data.toString();
+				for (let i = 0; i < data.length; i++) {
+					if ((data.length - i) % 3 == 0 && i !== 0) {
+						uang += `.${data[i]}`;
+					} else {
+						uang += data[i];
+					}
+				}
+				return uang;
 			},
 		},
 	};
 </script>
+
+<style></style>
