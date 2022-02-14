@@ -1,9 +1,7 @@
 <template>
 	<div class="main m-2">
 		<div class="olahragas">
-			<div class="row">
-				<!-- <b-button @click.prevent="test()">Tes</b-button> -->
-			</div>
+			<div class="row"></div>
 			<div class="row">
 				<b-table striped hover :items="olahragas" :fields="fieldsOlahraga">
 					<template #cell(jumlah)="row">{{
@@ -23,16 +21,17 @@
 				<div class="input-group col-sm">
 					<label class="my-1 mr-2" for="selectedMonth">Periode :</label>
 					<vue-monthly-picker v-model="selectedMonth"></vue-monthly-picker>
+					<b-button @click="clearTanggal()">Clear</b-button>
 				</div>
 			</div>
 			<div class="">
 				<table
-					class="table table-bordered border-primary table-striped"
+					class="table table-bordered border-primary table-hover 6table-striped"
 					id="relasiTable"
 				>
 					<thead class="table">
 						<th>Nama Olahraga</th>
-						<th></th>
+
 						<th>Total</th>
 						<th>1</th>
 						<th>2</th>
@@ -69,7 +68,7 @@
 					<tbody>
 						<tr v-for="sport in this.olahragas" :key="sport.id">
 							<td>{{ sport.namaOlahraga }}</td>
-							<td></td>
+
 							<td>{{ getHarian(sport.Kegiatans, 0) }}</td>
 							<td>{{ getHarian(sport.Kegiatans, 1) }}</td>
 							<td>{{ getHarian(sport.Kegiatans, 2) }}</td>
@@ -107,6 +106,41 @@
 				</table>
 			</div>
 		</div>
+		<div class="row">
+			<div class="input-group col col-lg-5">
+				<label class="my-1 mr-2" for="Username">Tanggal :</label>
+				<input type="date" class="form-control mr-3" v-model="startDate" /> -
+				<input type="date" class="form-control ml-3" v-model="endDate" />
+				<button
+					id="download"
+					class="btn"
+					@click.prevent="tableHtmlToExcel('table')"
+				>
+					<i class="fa fa-download"></i> Download
+				</button>
+			</div>
+			<b-pagination
+				v-model="currentPage"
+				:total-rows="filterData().length"
+				:per-page="perPage"
+				aria-controls="kegiatan-table"
+			></b-pagination>
+			<b-table
+				id="kegiatan-table"
+				striped
+				hover
+				:items="filterData()"
+				:per-page="perPage"
+				:current-page="currentPage"
+				:fields="fieldsKegiatan"
+			>
+				<template #cell(action)="row"
+					><b-button @click.prevent="deleteKegiatan(row.item.id)">
+						Hapus
+					</b-button></template
+				>
+			</b-table>
+		</div>
 	</div>
 </template>
 
@@ -123,13 +157,15 @@
 		},
 		data() {
 			return {
+				perPage: 20,
+				currentPage: 1,
 				namaOlahraga: '',
+				kegiatans: [],
 				target: 0,
 				satuan: '',
 				olahragas: [],
 				endDate: '',
 				startDate: '',
-
 				selectedMonth: '',
 				fieldsOlahraga: [
 					{ key: 'namaOlahraga', label: 'NAMA OLAHRAGA' },
@@ -139,17 +175,53 @@
 					{ key: 'kurang', class: 'text-right', label: 'KURANG' },
 					{ key: 'kegiatan', label: 'KEGIATAN' },
 				],
+				fieldsKegiatan: [
+					{ key: 'tanggal', label: 'TANGGAL' },
+					{ key: 'jam', label: 'WAKTU' },
+					{ key: 'Olahraga.namaOlahraga', label: 'OLAHRAGA' },
+					{ key: 'jumlah', label: 'JUMLAH' },
+					{ key: 'keterangan', label: 'KETERANGAN' },
+					{ key: 'action', label: 'HAPUS' },
+				],
 			};
 		},
 		created() {
 			this.olahragaList();
+			this.kegiatanList();
+			this.filterData();
 		},
 		methods: {
+			filterData() {
+				let hasil = [];
+				if (!this.startDate || !this.endDate) {
+					hasil = this.kegiatans;
+				} else {
+					this.kegiatans?.map((item) => {
+						let start = moment(this.startDate, 'YYYY/MM/DD') - 1;
+						let end = moment(this.endDate, 'YYYY/MM/DD') + 1;
+						let tanggalItem = moment(item.tanggal, 'YYYY/MM/DD');
+						if (tanggalItem < end && tanggalItem > start) {
+							hasil.push(item);
+						}
+					});
+				}
+				return hasil;
+			},
 			olahragaList() {
 				return axios
 					.get('/olahraga')
 					.then(({ data }) => {
 						this.olahragas = data;
+					})
+					.catch((err) => {
+						console.log(err);
+					});
+			},
+			kegiatanList() {
+				return axios
+					.get('/kegiatan')
+					.then(({ data }) => {
+						this.kegiatans = data;
 					})
 					.catch((err) => {
 						console.log(err);
@@ -167,9 +239,18 @@
 					url: '/olahraga',
 				});
 			},
-
+			deleteKegiatan(id) {
+				return axios.delete(`/kegiatan/${id}`).then((data) => {
+					Swal.fire('Ok', 'Data anda telah dihapus', 'success');
+					this.kegiatanList();
+				});
+			},
+			clearTanggal() {
+				this.selectedMonth = '';
+			},
 			getHarian(data, tanggal) {
 				let hasil = 0;
+
 				if (tanggal !== 0) {
 					data?.map((item) => {
 						const bulan = moment(item.tanggal).format('MM-YYYY');
@@ -178,14 +259,6 @@
 						if (bulan == periode && tanggal == tanggalItem) {
 							hasil += item.jumlah;
 						}
-						console.log(
-							bulan,
-							'bulan',
-							periode,
-							'periode',
-							tanggalItem,
-							'================='
-						);
 					});
 				} else {
 					data?.map((item) => {
@@ -196,8 +269,9 @@
 							hasil += item.jumlah;
 						}
 					});
-					return hasil;
 				}
+				if (hasil == 0) hasil = '-';
+				return hasil;
 			},
 			formatTanggal(data) {
 				let hasil = '';
